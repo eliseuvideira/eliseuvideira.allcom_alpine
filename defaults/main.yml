@@ -1,0 +1,19 @@
+---
+allcom_alpine__packages:
+  - bash
+  - curl
+  - docker
+  - git
+  - htop
+  - less
+  - make
+  - neovim
+  - oh-my-zsh
+  - python3
+  - py3-pip
+  - rsync
+  - stow
+  - sudo
+  - tmux
+  - vim
+  - zsh

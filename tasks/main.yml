@@ -1,0 +1,65 @@
+---
+- name: Setup apk Repositories
+  shell: |
+    #!/bin/sh
+    get_repositories() {
+      cat << EOF;
+    https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/main/
+    https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/community/
+    https://dl-cdn.alpinelinux.org/alpine/edge/testing/
+    EOF
+    }
+    repositories="$(mktemp)"
+    get_repositories >"$repositories"
+    if ! cmp -s "$repositories" /etc/apk/repositories; then
+      get_repositories >/etc/apk/repositories
+      printf "changed"
+    else
+      printf "unchanged"
+    fi
+    trap 'rm -f "$repositories"' EXIT
+  register: shell_output
+  changed_when: shell_output.stdout == "changed"
+
+- name: Install Packages
+  apk:
+    name: "{{ allcom_alpine__packages }}"
+    update_cache: true
+    state: present
+
+- name: Upgrade apk Packages
+  apk:
+    upgrade: true
+
+- name: Install Docker Compose
+  shell: |
+    #!/bin/sh
+    if [ -x /usr/local/bin/docker-compose ]; then
+      printf "unchanged"
+      exit 0
+    fi
+    curl -sSL https://github.com/docker/compose/releases/download/v2.4.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    printf "changed"
+  register: res
+  changed_when: res.stdout == "changed"
+
+- name: Enable and Start Docker
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Configure Cron
+  cron:
+    name: Restart once per week
+    job: /sbin/reboot
+    minute: "0"
+    hour: "2"
+    day: "*"
+    month: "*"
+    weekday: "1"
+
+- name: Install Boto
+  pip:
+    name: boto3
